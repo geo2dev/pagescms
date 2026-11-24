@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createServer } from "node:http";
-import { randomBytes } from "node:crypto";
+import { randomBytes, createSign } from "node:crypto";
 import { execFile } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -50,7 +50,7 @@ async function main() {
       checks: "read",
       statuses: "read",
       contents: "write",
-      email_addresses: "read",
+      emails: "read",
       metadata: "read",
     },
     default_events: [
@@ -69,7 +69,6 @@ async function main() {
     hook_attributes: {
       url: webhookUrl,
       active: true,
-      secret: webhookSecret,
     },
   };
 
@@ -88,6 +87,8 @@ async function main() {
   });
 
   const converted = await exchangeManifestCode(code);
+  // GitHub rejects `secret` in the manifest, so set the webhook secret through the API as the new app.
+  if (converted.webhook_secret !== webhookSecret) await setWebhookSecret(converted.id, converted.pem, webhookSecret);
   const envPath = args.envPath ? resolve(process.cwd(), args.envPath) : "";
   const authSecret =
     process.env.BETTER_AUTH_SECRET ||
@@ -388,4 +389,17 @@ function escapeHtml(value) {
 
 function toMessage(error) {
   return error instanceof Error ? error.message : String(error);
+}
+
+async function setWebhookSecret(appId, pem, secret) {
+  const b64 = (v) => Buffer.from(JSON.stringify(v)).toString("base64url");
+  const now = Math.floor(Date.now() / 1000);
+  const body = b64({ alg: "RS256", typ: "JWT" }) + "." + b64({ iat: now - 60, exp: now + 300, iss: String(appId) });
+  const jwt = body + "." + createSign("RSA-SHA256").update(body).sign(pem, "base64url");
+  const res = await fetch("https://api.github.com/app/hook/config", {
+    method: "PATCH",
+    headers: { Authorization: "Bearer " + jwt, Accept: "application/vnd.github+json", "Content-Type": "application/json" },
+    body: JSON.stringify({ secret }),
+  });
+  if (!res.ok) throw new Error("Could not set the webhook secret: " + res.status + " " + (await res.text()));
 }
