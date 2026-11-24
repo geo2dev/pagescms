@@ -4,7 +4,12 @@ import type { NextRequest } from "next/server";
 function isAllowedOrigin(originHeader: string, hostHeader: string): boolean {
 	try {
 		const originUrl = new URL(originHeader);
-		return originUrl.host.toLowerCase() === hostHeader.toLowerCase();
+		const origin = originUrl.host.toLowerCase();
+		if (origin === hostHeader.toLowerCase()) return true;
+		// Behind a proxy (Firebase App Hosting, Cloud Run) the Host header is the
+		// internal service host, so also accept the canonical BASE_URL host.
+		const baseUrl = process.env.BASE_URL;
+		return Boolean(baseUrl) && origin === new URL(baseUrl!).host.toLowerCase();
 	} catch {
 		return false;
 	}
