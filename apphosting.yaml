@@ -1,0 +1,31 @@
+# Firebase App Hosting config for the geo2 self-hosted Pages CMS.
+# Secrets live in Secret Manager: `firebase apphosting:secrets:set <name>`.
+
+runConfig:
+  minInstances: 0
+  # Branch-head and repo-meta caches are in-memory per process, so one instance.
+  maxInstances: 1
+  memoryMiB: 1024
+
+env:
+  - variable: BASE_URL
+    value: https://pagescms--prj-pro-baldev-geo2.europe-west4.hosted.app
+  # Needed at build time too: `postbuild` runs the database migrations.
+  - variable: DATABASE_URL
+    secret: pagescms-database-url
+  - variable: BETTER_AUTH_SECRET
+    secret: pagescms-better-auth-secret
+  - variable: CRYPTO_KEY
+    secret: pagescms-crypto-key
+  - variable: GITHUB_APP_ID
+    secret: pagescms-github-app-id
+  - variable: GITHUB_APP_NAME
+    secret: pagescms-github-app-name
+  - variable: GITHUB_APP_PRIVATE_KEY
+    secret: pagescms-github-app-private-key
+  - variable: GITHUB_APP_WEBHOOK_SECRET
+    secret: pagescms-github-app-webhook-secret
+  - variable: GITHUB_APP_CLIENT_ID
+    secret: pagescms-github-app-client-id
+  - variable: GITHUB_APP_CLIENT_SECRET
+    secret: pagescms-github-app-client-secret
